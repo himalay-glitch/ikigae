@@ -1,0 +1,245 @@
+@import '@fontsource-variable/inter';
+
+/* ------------------------------------------------------------------ tokens
+   Colours sampled from the reference. Layout uses a 1440-wide design grid:
+   1u = 1px at 1440, scaled with the viewport (capped at 1920). */
+:root {
+  --bg: #e4e4e4;
+  --line: #c8c8c8;
+  --line-2: #d0d0d0;
+  --panel: #f6f6f6;
+  --ink: #1b1b1b;
+  --ink-2: #3a3a3a;
+  --orange: #fe6f22;
+  --orange-hi: #ff8644;
+  --tile: #0e0e0e;
+  --mono: 'Fragment Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --sans: 'Inter Variable', 'Inter', system-ui, sans-serif;
+  --u: calc(min(100vw, 1920px) / 1440);
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* grid (u) */
+  --x0: 57;
+  --c1: 388;
+  --c2: 719;
+  --c3: 1050;
+  --x1: 1381;
+}
+
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-feature-settings: 'kern' 1;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+a { color: inherit; text-decoration: none; }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+ul { list-style: none; margin: 0; padding: 0; }
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+
+:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
+
+.display { display: block; fill: var(--ink); stroke: var(--ink); stroke-width: 2.6; stroke-linejoin: round; overflow: visible; }
+
+.hero { position: relative; width: calc(var(--u) * 1440); height: calc(var(--u) * 900); margin: 0 auto; }
+.hero-stage { position: relative; height: 100%; }
+
+/* ------------------------------------------------------------------ grid */
+.grid-lines { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+.gl { position: absolute; background: var(--line); }
+.gl-v { width: 1px; top: calc(var(--u) * 74); bottom: 0; transform-origin: top; }
+.gl-h { height: 1px; left: calc(var(--u) * var(--x0)); width: calc(var(--u) * (var(--x1) - var(--x0))); transform-origin: left; }
+.v0 { left: calc(var(--u) * var(--x0)); }
+.v1 { left: calc(var(--u) * var(--c1)); }
+.v2 { left: calc(var(--u) * var(--c2)); }
+.v3 { left: calc(var(--u) * var(--c3)); }
+.v4 { left: calc(var(--u) * var(--x1)); }
+.h1 { top: calc(var(--u) * 133); }
+.h2 { top: calc(var(--u) * 470); }
+
+/* ------------------------------------------------------------------ nav */
+.nav { position: absolute; inset: 0 0 auto 0; height: calc(var(--u) * 76); z-index: 6; }
+.nav-frame { position: absolute; inset: 0; width: 100%; height: 100%; }
+.nav-div { position: absolute; top: 0; width: 1px; height: calc(var(--u) * 74); background: var(--line); }
+.nd1 { left: calc(var(--u) * var(--c1)); }
+.nd2 { left: calc(var(--u) * var(--c3)); }
+
+.logo { position: absolute; left: calc(var(--u) * 29); top: calc(var(--u) * 14); display: flex; align-items: center; gap: calc(var(--u) * 8); }
+.logo-mark { width: calc(var(--u) * 47); height: calc(var(--u) * 47); }
+.logo-words { display: flex; flex-direction: column; gap: calc(var(--u) * 5); }
+.logo-top { font-family: var(--sans); font-weight: 500; font-size: max(12px, calc(var(--u) * 17.5)); line-height: 1; letter-spacing: -0.01em; color: var(--ink-2); }
+.logo-labs { height: max(12px, calc(var(--u) * 17)); width: auto; }
+
+.nav-links {
+  position: absolute; left: calc(var(--u) * var(--c1)); width: calc(var(--u) * (var(--c3) - var(--c1)));
+  top: 0; height: calc(var(--u) * 74);
+  display: flex; align-items: center; justify-content: center; gap: calc(var(--u) * 31);
+  font-size: max(11px, calc(var(--u) * 13.5));
+}
+.nav-links a { position: relative; padding: calc(var(--u) * 6) 0; transition: color 0.2s; }
+.nav-links a::after {
+  content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 1px; background: var(--orange);
+  transform: scaleX(0); transform-origin: right; transition: transform 0.35s var(--ease);
+}
+.nav-links a:hover { color: #000; }
+.nav-links a:hover::after { transform: scaleX(1); transform-origin: left; }
+
+.eco {
+  position: absolute; left: calc(var(--u) * 1086); top: 0; height: calc(var(--u) * 74);
+  display: flex; align-items: center; gap: calc(var(--u) * 14);
+  font-size: max(11px, calc(var(--u) * 13.5));
+}
+.eco-dots { width: calc(var(--u) * 11); height: calc(var(--u) * 11); transition: transform 0.5s var(--ease); }
+.eco:hover .eco-dots { transform: rotate(90deg); }
+
+/* ------------------------------------------------------------------ buttons */
+.btn {
+  --ch: calc(var(--u) * 8);
+  position: relative; display: inline-flex; align-items: center; justify-content: center;
+  background: var(--orange); color: var(--ink);
+  font-size: max(10px, calc(var(--u) * 12.5)); letter-spacing: 0.06em; text-transform: uppercase;
+  clip-path: polygon(var(--ch) 0, 100% 0, 100% calc(100% - var(--ch)), calc(100% - var(--ch)) 100%, 0 100%, 0 var(--ch));
+  overflow: hidden; transition: background 0.3s;
+}
+.btn::before {
+  content: ''; position: absolute; inset: 0; background: var(--ink);
+  transform: translateX(-101%); transition: transform 0.45s var(--ease);
+}
+.btn-label { position: relative; transition: color 0.3s; }
+.btn:hover::before { transform: translateX(0); }
+.btn:hover .btn-label { color: var(--orange); }
+.btn-nav { position: absolute; left: calc(var(--u) * 1291); top: calc(var(--u) * 16); width: calc(var(--u) * 121); height: calc(var(--u) * 40); }
+
+/* ------------------------------------------------------------------ side rails */
+
+.socials {
+  position: absolute; left: calc(var(--u) * var(--x1)); top: calc(var(--u) * 94); z-index: 4;
+  width: calc(var(--u) * 41); height: auto; padding-bottom: calc(var(--u) * 3);
+  background: var(--panel); border: 1px solid var(--line);
+  display: flex; flex-direction: column; align-items: center;
+}
+.socials a { display: grid; place-items: center; width: 100%; height: calc(var(--u) * 40); color: var(--ink); transition: color 0.2s; }
+.socials a:first-of-type { margin-top: calc(var(--u) * 3); }
+.socials a svg { width: calc(var(--u) * 15); height: calc(var(--u) * 15); }
+.socials a:hover { color: var(--orange); }
+
+/* ------------------------------------------------------------------ hero stage */
+.sq { position: absolute; width: calc(var(--u) * 11); height: calc(var(--u) * 11); background: var(--orange); }
+
+/* LED sign: a black dot-matrix band under the nav, scrolling */
+.hero-sign { position: absolute; left: 0; right: 0; top: calc(var(--u) * 100); z-index: 2; pointer-events: none; }
+.led { --pitch: calc(var(--u) * 15); height: calc(var(--pitch) * 11); background: #0d0b0c; overflow: hidden; }
+.led-track { display: flex; width: max-content; height: 100%; animation: led 60s linear infinite; }
+.led-strip { display: block; height: 100%; width: calc(var(--pitch) * var(--cols)); flex: none; }
+@keyframes led { to { transform: translateX(-50%); } }
+
+/* settled: pitch on the left of the standing robot */
+.hero-pitch { position: absolute; z-index: 3; left: calc(var(--u) * 82); bottom: calc(var(--u) * 130); width: calc(var(--u) * 340); }
+.hero-tag {
+  margin: 0 0 calc(var(--u) * 22); display: flex; align-items: center; gap: calc(var(--u) * 12);
+  font-size: max(10px, calc(var(--u) * 12)); letter-spacing: 0.08em; text-transform: uppercase;
+}
+.hero-tag .sq { position: static; width: calc(var(--u) * 9); height: calc(var(--u) * 9); }
+.hero-lede { margin: 0; font-size: max(13px, calc(var(--u) * 17)); line-height: 1.42; letter-spacing: -0.01em; }
+.hero-actions { margin-top: calc(var(--u) * 26); display: grid; gap: calc(var(--u) * 14); justify-items: start; }
+.hero-actions .btn { width: calc(var(--u) * 282); height: calc(var(--u) * 42); }
+.hero-link { font-size: max(10.5px, calc(var(--u) * 12.5)); letter-spacing: 0.06em; text-transform: uppercase; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 4px; transition: color 0.2s; }
+.hero-link:hover { color: var(--orange); }
+
+/* the robot speaks, to the right of its head */
+.hero-says { position: absolute; z-index: 3; left: calc(var(--u) * 1012); bottom: calc(var(--u) * 360); width: calc(var(--u) * 300); pointer-events: none; }
+.says-bubble {
+  position: relative; margin: 0; padding: calc(var(--u) * 14) calc(var(--u) * 16);
+  background: var(--panel); border: 1px solid var(--line); font-size: max(11.5px, calc(var(--u) * 13.5)); line-height: 1.45;
+  transform-origin: left center;
+}
+.says-bubble::after {
+  content: ''; position: absolute; left: calc(var(--u) * -8); top: calc(var(--u) * 18);
+  width: calc(var(--u) * 14); height: calc(var(--u) * 14); background: var(--panel);
+  border-bottom: 1px solid var(--line); border-left: 1px solid var(--line); transform: rotate(45deg);
+}
+
+/* the hatch the robot stands on; the pipe leaves the hero from here */
+.pipe-hatch { position: absolute; left: calc(var(--u) * 719); bottom: calc(var(--u) * 90); width: 1px; height: 1px; pointer-events: none; }
+/* page-wide WebGL layer: pipes + robot (above content, never intercepts input) */
+.pipe-world { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 5; pointer-events: none; display: block; }
+
+.in-live { flex: none; width: calc(var(--u) * 8); height: calc(var(--u) * 8); background: var(--orange); border-radius: 50%; animation: live 2s ease-out infinite; }
+@keyframes live { 0% { box-shadow: 0 0 0 0 rgba(254, 111, 34, 0.55); } 80%, 100% { box-shadow: 0 0 0 calc(var(--u) * 9) rgba(254, 111, 34, 0); } }
+
+/* standalone robot (phones / no WebGL pipe layer) */
+.robot-stage { position: relative; pointer-events: none; }
+.robot-canvas, .robot-poster { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.hero.is-static { height: auto; }
+.hero.is-static .hero-stage { display: flex; flex-direction: column; align-items: center; padding-bottom: calc(var(--u) * 60); }
+.hero.is-static .hero-sign { position: relative; top: auto; width: 100%; margin-top: calc(var(--u) * 96); }
+.hero.is-static .robot-stage { --p: calc(var(--u) * 640); width: var(--p); height: var(--p); margin: calc(var(--u) * -40) 0 calc(var(--u) * -300); }
+.hero.is-static .hero-pitch { position: relative; left: auto; bottom: auto; width: calc(var(--u) * 420); text-align: center; }
+.hero.is-static .hero-tag { justify-content: center; }
+.hero.is-static .hero-actions { justify-items: center; }
+
+/* partner marks (used by the footer strip) */
+.pm { display: flex; align-items: center; gap: calc(var(--u) * 12); }
+.pm-icon { width: calc(var(--u) * 34); height: calc(var(--u) * 34); display: block; }
+.pm-icon svg { width: 100%; height: 100%; display: block; }
+.pm-name { font-family: var(--sans); font-weight: 600; font-size: calc(var(--u) * 24); letter-spacing: -0.02em; }
+.pm-caps { text-transform: uppercase; letter-spacing: 0.04em; }
+.pm-display { height: calc(var(--u) * 25); width: auto; fill: #111; stroke: #111; }
+
+/* ------------------------------------------------------------------ motion prefs */
+@media (prefers-reduced-motion: reduce) {
+  .in-live, .partners-track, .led-track { animation: none; }
+  .btn::before { transition: none; }
+}
+
+/* ------------------------------------------------------------------ mobile / tablet
+   Below 1024px the 4-column composition stacks; the robot stays the centrepiece. */
+@media (max-width: 1023px) {
+  :root { --u: 1px; }
+  .hero { width: 100%; height: auto; }
+  .grid-lines .v1, .grid-lines .v3, .grid-lines .h1, .grid-lines .h2 { display: none; }
+  .v0 { left: 16px; }
+  .v4 { left: auto; right: 16px; }
+  .v2 { left: 50%; }
+  .gl-v { top: 64px; }
+
+  .nav { position: relative; height: 64px; flex: none; }
+  .nav-div, .nav-links, .eco { display: none; }
+  .nav-frame { display: none; }
+  .nav { border-bottom: 1px solid var(--line); }
+  .logo { left: 16px; top: 12px; }
+  .logo-mark { width: 40px; height: 40px; }
+  .btn-nav { left: auto; right: 16px; top: 14px; width: 112px; height: 36px; }
+  .btn { --ch: 7px; font-size: 11px; }
+
+  .socials { display: none; }
+
+  .hero-stage { padding-bottom: 40px !important; }
+  .hero.is-static .nav { align-self: stretch; width: 100%; }
+  .hero-tag { font-size: 11px; }
+  .hero.is-static .hero-sign { margin: 0 0 8px; }
+  .led { --pitch: 9px; }
+  .hero.is-static .robot-stage { --p: min(132vw, 820px); margin: -4vw 0 calc(var(--p) * -0.42); }
+  .hero.is-static .hero-pitch { width: auto; margin: 0 24px; }
+  .hero-lede { font-size: 15px; }
+  .hero-actions .btn { width: 100%; max-width: 300px; height: 44px; }
+  .pipe-world { display: none; }
+  .pm-icon { width: 26px; height: 26px; }
+  .pm-name { font-size: 19px; }
+  .pm-display { height: 19px; }
+}

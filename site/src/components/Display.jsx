@@ -31,6 +31,10 @@ const G = {
   V: { w: 88, p: [['M0,0 L25,100 H63 L88,0 H71 L53,85 H35 L17,0 Z']] },
   X: { w: 88, p: [['M0,0 H20 L44,38 L68,0 H88 L54,50 L88,100 H68 L44,62 L20,100 H0 L34,50 Z']] },
   Z: { w: 80, p: [['M0,0 H80 V15 L24,85 H80 V100 H0 V85 L56,15 H0 Z']] },
+  '-': { w: 52, p: [['M0,42.5 H52 V57.5 H0 Z']] },
+  "'": { w: 17, p: [['M0,0 H17 V34 L8,40 H0 Z']] },
+  '’': { w: 17, p: [['M0,0 H17 V34 L8,40 H0 Z']] },
+  '.': { w: 17, p: [['M0,83 H17 V100 H0 Z']] },
   0: { w: 80, p: [['M14,0 H80 V86 L66,100 H0 V14 Z M20,15 L17,18 V85 H58 L63,80 V15 Z', true]] },
   2: { w: 80, p: [['M0,0 H66 L80,14 V57.5 H17 V85 H80 V100 H0 V42.5 H63 V18 L60,15 H0 Z']] },
   4: { w: 80, p: [['M0,0 H17 V50 H55 V0 H72 V50 H80 V65 H72 V100 H55 V65 H0 Z']] },
@@ -60,7 +64,10 @@ export function layout(text, track = TRACK) {
   return { items, width: Math.max(0, x - track) }
 }
 
-export default function Display({ text, className = '', title, track }) {
+// accent: a small orange triangle sits inside each A (the crossbar-less A)
+const A_ACCENT = 'M31,100 L57,100 L44,73 Z'
+
+export default function Display({ text, className = '', title, track, accent = false }) {
   const { items, width } = layout(text, track)
   return (
     <svg
@@ -75,6 +82,7 @@ export default function Display({ text, className = '', title, track }) {
           {g.p.map(([d, eo], j) => (
             <path key={j} d={d} fillRule={eo ? 'evenodd' : 'nonzero'} />
           ))}
+          {accent && g === G.A && <path className="display-accent" d={A_ACCENT} />}
         </g>
       ))}
     </svg>

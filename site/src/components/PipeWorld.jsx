@@ -9,33 +9,27 @@ import { onFrame } from '../lib/scroll.js'
   one scene. World units are page design units (u): x = u from the page's left edge,
   y = −(u from the page top).
 
-  The S is built from DOM markers: it starts at the hatch under the hero robot
-  ([data-pipe="hatch"]), drops into the first section's lane band ([data-lane]), runs across it,
+  The S is built from DOM markers: it starts where the hero's sand meets the first section
+  ([data-pipe="hatch"], under the culvert in the backdrop), drops into the first section's lane band ([data-lane]), runs across it,
   bends down the side named by that lane's data-drop ('r' | 'l'), sweeps back across the next
   section, and so on, ending in a glass dock in the centre of the last lane (data-drop="end").
   Every corner is a filleted elbow, so the pipe is one continuous piece by construction.
 
-  Robot journey:
-    hero   — stands big on the hatch, head follows the cursor
-    fall   — on scroll it hops, shrinks and drops into the pipe
-    pipe   — moves along the S (one path parameter) toward the point of the pipe nearest the
-             cursor; each section plays its own gesture + face when the robot settles there
-    rise   — scroll back to the top and it climbs out onto the hatch again
+  The robot lives in the pipe: it waits at the top of the S (just under the hero) and moves
+  along it toward the point of the pipe nearest the cursor; each section plays its own
+  gesture + face when the robot settles there.
 */
 
 const START_X = 719
 const R = 44 // tube outer radius
 const BEND = 78 // elbow radius (centre line)
-const HUB = 62 // junction / dock sphere radius
+const HUB = 72 // end dock (glass bulb) radius — clearly wider than the tube so it reads as a chamber
+const COLLAR_H = 26 // coupling band length
 const HUB_CUT = Math.sqrt(HUB * HUB - R * R)
 const DROP_INSET = 79 // drop centre line, measured in from the lane band's ends
-const HATCH_H = 28
-const PIPE_SCALE = 212 // robot size inside pipes (u per metre)
-const HERO_SCALE = 1450 // robot size standing on the hatch in the hero
-const HERO_YAW = -0.24
-const HERO_PITCH = 0.08
+const PIPE_SCALE = 300 // robot size inside pipes (u per metre; the robot is 18.5 cm tall)
 // on load the visor says hi in LED dots, then the eyes power on
-const GREETING = [{ text: 'HI!', color: '#FF7A2E', scale: 2 }]
+const GREETING = [{ text: 'HI!', color: '#5B8CFF', scale: 2 }]
 const GREETING_MS = 2200
 const FOV = 20
 const TAU = Math.PI * 2
@@ -64,12 +58,12 @@ const GESTURES = {
 }
 
 /* ------------------------------------------------------------------ materials */
-function glassMaterial({ base = 0.07, tint = '#f4f5f8', rim = 0.5 } = {}) {
+function glassMaterial({ base = 0.07, tint = '#f4f5f8', rim = 0.5, clip = { value: -1e6 } } = {}) {
   return new THREE.ShaderMaterial({
     transparent: true,
     depthWrite: false,
     side: THREE.DoubleSide,
-    uniforms: { uTint: { value: new THREE.Color(tint) }, uBase: { value: base }, uRim: { value: rim } },
+    uniforms: { uTint: { value: new THREE.Color(tint) }, uBase: { value: base }, uRim: { value: rim }, uClip: clip },
     vertexShader: /* glsl */`
       varying vec3 vN; varying vec3 vV;
       void main() {
@@ -79,9 +73,10 @@ function glassMaterial({ base = 0.07, tint = '#f4f5f8', rim = 0.5 } = {}) {
         gl_Position = projectionMatrix * mv;
       }`,
     fragmentShader: /* glsl */`
-      uniform vec3 uTint; uniform float uBase; uniform float uRim;
+      uniform vec3 uTint; uniform float uBase; uniform float uRim; uniform float uClip;
       varying vec3 vN; varying vec3 vV;
       void main() {
+        if (gl_FragCoord.y < uClip) discard; // below the hero ground line
         vec3 n = normalize(vN);
         vec3 v = normalize(vV);
         if (!gl_FrontFacing) n = -n;
@@ -230,9 +225,12 @@ function readLayout(page) {
     return { x0: (r.left - pr.left) / U, x1: (r.right - pr.left) / U, y0: (r.top - pr.top) / U, y1: (r.bottom - pr.top) / U }
   }
   const hatchEl = page.querySelector('[data-pipe="hatch"]')
+  const heroEl = page.querySelector('[data-hero]')
   const laneEls = [...page.querySelectorAll('[data-lane]')]
-  if (!hatchEl || !laneEls.length) return null
-  const hatch = box(hatchEl).y0
+  if (!hatchEl || !heroEl || !laneEls.length) return null
+  const hb = box(hatchEl)
+  const hatch = { x: hb.x0, y: hb.y0 }
+  const heroTop = box(heroEl).y0
   const lanes = laneEls.map((el) => {
     const b = box(el)
     return { key: el.dataset.lane, drop: el.dataset.drop || 'r', y: (b.y0 + b.y1) / 2, xl: b.x0 + DROP_INSET, xr: b.x1 - DROP_INSET }
@@ -246,11 +244,10 @@ function readLayout(page) {
     return { el, key: el.dataset.port, x0: b.x0, x1: b.x1 }
   })
 
-  // corners of the S: the first lane runs full width (starting from the end opposite its
-  // drop), bends down the drop side, sweeps back across the next section, … → centre dock.
-  // The hatch pipe from the hero joins the first lane through a glass junction at x = 719.
+  // corners of the S: from under the hero's sand straight down into the first
+  // lane, across it to its drop side, down, back across the next section, … → centre dock.
   const first = lanes[0]
-  const corners = [v2(first.drop === 'l' ? first.xr : first.xl, first.y)]
+  const corners = [v2(hatch.x, hatch.y), v2(hatch.x, first.y)]
   for (let i = 0; i < lanes.length; i++) {
     const ln = lanes[i]
     if (ln.drop === 'end' || i === lanes.length - 1) { corners.push(v2(START_X, ln.y)); break }
@@ -262,8 +259,7 @@ function readLayout(page) {
   const sectionAt = (y) => sections.find((s) => y >= s.y0 && y < s.y1)?.key ?? null
   path.segs.forEach((g) => { g.key = sectionAt((g.a.y + g.b.y) / 2) })
 
-  const junctionS = closestS(path, START_X, first.y).s
-  return { hatch, lanes, sections, ports, path, junctionS, sig: JSON.stringify([hatch, lanes, sections.map((s) => [s.y0, s.y1])]) }
+  return { hatch, heroTop, lanes, sections, ports, path, sig: JSON.stringify([hatch, heroTop, lanes, sections.map((s) => [s.y0, s.y1])]) }
 }
 
 function buildPipes(L, mats) {
@@ -280,47 +276,17 @@ function buildPipes(L, mats) {
     g.add(m)
     return m
   }
-  const collarGeo = bandGeo(R * 0.97, R * 1.15, 26, 4)
+  const collarGeo = bandGeo(R * 0.97, R * 1.15, COLLAR_H, 4)
   const collarRing = bandGeo(R * 1.1, R * 1.19, 7, 2)
   const coupling = (s) => {
     const p = pointAt(P, s)
     band(collarGeo, mats.white, p.x, p.y, v2(p.tx, p.ty))
-    band(collarRing, mats.orange, p.x, p.y, v2(p.tx, p.ty))
+    band(collarRing, mats.accent, p.x, p.y, v2(p.tx, p.ty))
     stops.push(s)
   }
 
-  // hatch on top (the hero robot stands on it) and the short pipe down to the first lane
-  const J = pointAt(P, L.junctionS)
-  band(bandGeo(R * 0.97, R * 1.24, HATCH_H, 5), mats.white, START_X, L.hatch + HATCH_H / 2, v2(0, 1))
-  band(bandGeo(R * 1.18, R * 1.29, 8, 2.5), mats.orange, START_X, L.hatch + 4, v2(0, 1))
-  const stubA = L.hatch + HATCH_H
-  const stubB = J.y - HUB_CUT
-  if (stubB - stubA > 1) {
-    const m = new THREE.Mesh(new THREE.CylinderGeometry(R, R, stubB - stubA, 64, 1, true), mats.glass)
-    m.position.set(START_X, W((stubA + stubB) / 2), 0)
-    m.renderOrder = 5
-    g.add(m)
-    if (J.y - HUB - 16 - stubA > 30) {
-      band(collarGeo, mats.white, START_X, J.y - HUB - 16, v2(0, 1))
-      band(collarRing, mats.orange, START_X, J.y - HUB - 16, v2(0, 1))
-    }
-  }
-  const hub = new THREE.Mesh(new THREE.SphereGeometry(HUB, 64, 40), mats.glass)
-  hub.position.set(J.x, W(J.y), 0)
-  hub.renderOrder = 6
-  g.add(hub)
-
-  // start cap on the first lane's outer end
-  const s0 = pointAt(P, 0)
-  const cap = new THREE.Mesh(capGeo(R * 1.12, 36), mats.white)
-  cap.rotation.z = s0.tx > 0 ? Math.PI / 2 : -Math.PI / 2
-  cap.position.set(s0.x, W(s0.y), 0)
-  g.add(cap)
-  band(collarRing, mats.orange, s0.x + s0.tx * 4, s0.y, v2(1, 0))
-  stops.push(10)
-
-  // glass along the path, cut where the junction sphere and the end dock sit
-  const cuts = [[L.junctionS - HUB_CUT, L.junctionS + HUB_CUT], [P.length - HUB_CUT, Infinity]]
+  // glass along the path (it starts where the hero's sand ends), cut at the end dock
+  const cuts = [[P.length - HUB_CUT, Infinity]]
   const pieces = (a, b) => {
     let out = [[a, b]]
     for (const [c0, c1] of cuts) out = out.flatMap(([x, y]) => (c1 <= x || c0 >= y ? [[x, y]] : [[x, Math.min(y, c0)], [Math.max(x, c1), y]].filter(([u, w]) => w - u > 0.5)))
@@ -348,14 +314,14 @@ function buildPipes(L, mats) {
       m.position.set(seg.c.x, W(seg.c.y), 0)
       m.renderOrder = 5
       g.add(m)
-      coupling(seg.s0)
+      if (seg.s0 > 40) coupling(seg.s0) // none at the very top: it would poke out over the sand
       if (seg.s0 + seg.len < sEnd - 20) coupling(seg.s0 + seg.len)
     }
   })
-  // couplings: either side of the junction, then spread along the long straights
-  const Jd = HUB + 16
-  coupling(L.junctionS - Jd)
-  coupling(L.junctionS + Jd)
+  // floor port: the pipe leaves the hero through a fitting straddling its ground line, right
+  // under the pod's hatch, so it never just appears out of the hero's bottom edge
+  coupling(0)
+  // couplings spread along the long straights
   P.segs.forEach((seg) => {
     if (seg.type !== 'line') return
     const a = seg.s0
@@ -363,7 +329,7 @@ function buildPipes(L, mats) {
     const n = seg.kind === 'lane' ? 1 : 0 // one fitting mid-lane; drops stay clean
     for (let k = 1; k <= n; k++) {
       const sk = a + ((b - a) * k) / (n + 1)
-      if (stops.every((q) => Math.abs(q - sk) > 160) && Math.abs(sk - L.junctionS) > HUB + 140) coupling(sk)
+      if (stops.every((q) => Math.abs(q - sk) > 160)) coupling(sk)
     }
   })
 
@@ -373,7 +339,8 @@ function buildPipes(L, mats) {
   dock.position.set(end.x, W(end.y), 0)
   dock.renderOrder = 6
   g.add(dock)
-  coupling(P.length - HUB - 16)
+  // flange flush on the seam: the collar's face sits exactly where the tube meets the bulb
+  coupling(P.length - HUB_CUT - COLLAR_H / 2 - 0.5)
   stops.sort((a, b) => a - b)
   return { group: g, stops }
 }
@@ -417,12 +384,27 @@ export default function PipeWorld({ onFail }) {
     scene.add(fill, rim, new THREE.HemisphereLight(0xffffff, 0xcfcfd2, 0.35))
 
     const camera = new THREE.PerspectiveCamera(FOV, 1, 50, 12000)
+    renderer.localClippingEnabled = true
 
     const mats = {
       glass: glassMaterial(),
       white: new THREE.MeshPhysicalMaterial({ color: '#ECEBEF', roughness: 0.34, clearcoat: 0.35, clearcoatRoughness: 0.2 }),
-      orange: new THREE.MeshPhysicalMaterial({ color: '#FE6F22', roughness: 0.36, clearcoat: 0.3, emissive: '#FF4A00', emissiveIntensity: 0.12 }),
+      accent: new THREE.MeshPhysicalMaterial({ color: '#2F6BFF', roughness: 0.36, clearcoat: 0.3, emissive: '#1F55FF', emissiveIntensity: 0.12 }),
     }
+    // theme: glass tint + the collars' accent rings follow <html data-theme>
+    const THEMES = {
+      light: { tint: '#f4f5f8', accent: '#2F6BFF', glow: '#1F55FF' },
+      dark: { tint: '#aab4ca', accent: '#4F80FF', glow: '#3A6BFF' },
+    }
+    const applyTheme = () => {
+      const t = THEMES[document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light']
+      mats.glass.uniforms.uTint.value.set(t.tint)
+      mats.accent.color.set(t.accent)
+      mats.accent.emissive.set(t.glow)
+    }
+    applyTheme()
+    const themeObs = new MutationObserver(applyTheme)
+    themeObs.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
 
     // ---------------------------------------------------------------- layout + pipes
     let L = null
@@ -486,9 +468,12 @@ export default function PipeWorld({ onFail }) {
     let robot = null
     let blinker = null
     let alive = true
+    // hides the robot above the top of the S (it waits there, tucked under the hero)
+    const clipPlane = new THREE.Plane(new THREE.Vector3(0, -1, 0), 0)
     loadRobot().then((rb) => {
       if (!alive) return
       robot = rb
+      rb.rig.traverse((o) => { if (o.isMesh) o.material.clippingPlanes = [clipPlane] })
       scene.add(rb.rig)
       blinker = createBlinker(rb, { reduce })
       if (reduce) blinker.powerOn(0)
@@ -500,19 +485,17 @@ export default function PipeWorld({ onFail }) {
     }).catch(() => {})
 
     const st = {
-      mode: 'hero', t: 0, s: 0, v: 0, goal: null, heroE: 1,
-      fallFrom: null,
-      x: START_X, y: 0, tx: 0, ty: 1, seg: null, scale: HERO_SCALE,
+      s: 0, v: 0, goal: null,
+      x: 0, y: 0, tx: 0, ty: 1, seg: null,
       lookY: 0, lookP: 0, vLY: 0, vLP: 0,
       roll: 0, vRoll: 0, arm: 0, vArm: 0, yawM: 0,
       section: null, settle: 0, idle: 0, gesture: null, exprUntil: 0, lastAct: {},
       portEl: null,
     }
-    const halfH = () => (robot ? robot.size.y / 2 : 0.13)
-    const heroY = () => L.hatch - halfH() * HERO_SCALE
-    // the junction under the hatch: where the fall lands, where it parks, where the climb starts
-    const topS = () => L.junctionS
-    const entryS = () => 36 + 50 // can roam the whole first lane, up to its end cap
+    const halfH = () => (robot ? robot.size.y / 2 : 0.15)
+    // the top of the S: where the robot waits when the page is at the top
+    const topS = () => 64 // parked just inside the first bend, fully below the hero
+    const entryS = () => 40
     const endS = () => L.path.length
     const clearOf = (s) => {
       for (const k of L.stops) if (Math.abs(s - k) < 46) return s < k ? k - 46 : k + 46
@@ -555,6 +538,7 @@ export default function PipeWorld({ onFail }) {
       const dist = (view.Hu / 2) / Math.tan(THREE.MathUtils.degToRad(FOV / 2))
       camera.position.set(camX, camY, dist)
       camera.lookAt(camX, camY, 0)
+      const cursor = ptr.on ? { x: (ptr.x - pr.left) / view.U, y: (ptr.y - pr.top) / view.U } : null
 
       // bubbles drift back up the pipe
       if (bubbles) {
@@ -575,50 +559,23 @@ export default function PipeWorld({ onFail }) {
 
       if (robot) {
         const t = now / 1000
-        const cursor = ptr.on ? { x: (ptr.x - pr.left) / view.U, y: (ptr.y - pr.top) / view.U } : null
         const Hs = halfH()
-        const top = pointAt(P, topS())
-
-        // ---- mode transitions
+        const o = { dy: 0, yaw: 0, pitch: 0, roll: 0, armL: 0, armR: 0, glow: 1, sq: 1, jx: 0 }
+        let armT = 0
         const pastHero = scrollU
-        if (st.mode === 'hero') {
-          st.x = START_X; st.y = heroY(); st.scale = HERO_SCALE; st.heroE = 1
-          if (pastHero > 40) {
-            if (reduce) { st.mode = 'pipe'; st.s = entryS(); st.v = 0 }
-            else { st.mode = 'fall'; st.t = now; st.fallFrom = st.y }
-          }
-        } else if (st.mode === 'fall') {
-          const k = Math.min(1, (now - st.t) / 900)
-          const hop = 0.2
-          const peak = st.fallFrom - 0.12 * Hs * HERO_SCALE
-          if (k < hop) {
-            st.y = st.fallFrom + (peak - st.fallFrom) * Math.sin((k / hop) * Math.PI / 2)
-            st.scale = HERO_SCALE
-          } else {
-            const q = (k - hop) / (1 - hop)
-            st.y = peak + (top.y - peak) * q * q
-            st.scale = HERO_SCALE + (PIPE_SCALE - HERO_SCALE) * smooth(Math.min(1, q * 1.15))
-          }
-          st.x = START_X
-          if (k >= 1) {
-            st.mode = 'pipe'; st.s = topS()
-            st.v = Math.min(1800, (2 * (top.y - peak)) / (0.9 * (1 - hop)))
-          }
-        } else if (st.mode === 'rise') {
-          const k = Math.min(1, (now - st.t) / 640)
-          const e = 1 + 2.2 * Math.pow(k - 1, 3) + 1.2 * Math.pow(k - 1, 2) // ease-out-back
-          st.y = top.y + (heroY() - top.y) * e
-          st.scale = PIPE_SCALE + (HERO_SCALE - PIPE_SCALE) * smooth(k)
-          st.x = START_X
-          if (k >= 1) st.mode = 'hero'
-        }
+
+        // ---- the hero robot sinks through the pod's hatch over the first ~270u of scroll; this
+        // one then carries on, sliding out of the hero's bottom edge right under the pod
+        const hidden = pastHero < 275
+        robot.rig.visible = !hidden
+        if (hidden) { st.s = 0; st.v = 0; st.goal = null }
 
         // ---- travel along the S
-        if (st.mode === 'pipe') {
-          st.scale = PIPE_SCALE
+        {
+          clipPlane.set(new THREE.Vector3(0, -1, 0), -L.hatch.y)
           let goal
           if (st.goal == null) st.goal = st.s
-          if (pastHero < 24) { goal = topS(); st.goal = topS() }
+          if (hidden || pastHero < 330) { goal = topS(); st.goal = topS() }
           else {
             const cx = cursor ? cursor.x : st.x
             const cy = cursor ? cursor.y : scrollU + view.Hu * 0.55
@@ -633,11 +590,6 @@ export default function PipeWorld({ onFail }) {
           const p = pointAt(P, st.s)
           st.x = p.x; st.y = p.y; st.tx = p.tx; st.ty = p.ty; st.seg = p.seg
 
-          if (pastHero < 24 && Math.abs(st.s - topS()) < 8 && Math.abs(st.v) < 140) {
-            st.mode = reduce ? 'hero' : 'rise'
-            st.t = now
-          }
-
           // ---- section acts: play when the robot settles somewhere new (or idles a while)
           const sec = sectionAt(st.y)
           if (Math.abs(st.v) < 50) st.settle += dt; else { st.settle = 0; st.idle = 0 }
@@ -650,18 +602,16 @@ export default function PipeWorld({ onFail }) {
         }
 
         // ---- gesture offsets
-        const o = { dy: 0, yaw: 0, pitch: 0, roll: 0, armL: 0, armR: 0, glow: 1, sq: 1, jx: 0 }
         if (st.gesture) {
           const G = GESTURES[st.gesture.name]
           const k = (now - st.gesture.t) / (G.dur * 1000)
-          if (k >= 1 || st.mode !== 'pipe') st.gesture = null
+          if (k >= 1) st.gesture = null
           else G.apply(k, o)
         }
-        const piping = st.mode === 'pipe'
-        const vx = piping ? st.v * st.tx : 0
-        const vy = piping ? st.v * st.ty : st.mode === 'fall' ? 1400 : 0
+        const vx = st.v * st.tx
+        const vy = st.v * st.ty
         if (robot.expression && robot.expression !== 'banner' && now > st.exprUntil) robot.setExpression(null)
-        if (piping && st.section === 'process' && Math.abs(vx) > 260 && !st.gesture) {
+        if (st.section === 'process' && Math.abs(vx) > 260 && !st.gesture) {
           robot.setExpression(vx > 0 ? 'right' : 'left')
           st.exprUntil = now + 500
         }
@@ -669,7 +619,7 @@ export default function PipeWorld({ onFail }) {
         // ---- motion feel: lean into horizontal runs, arms up when dropping fast
         const rollT = -Math.max(-1, Math.min(1, vx / 900)) * 0.3 + Math.sin(t * 8) * 0.07 * Math.min(1, Math.max(0, vy) / 900)
         ;[st.roll, st.vRoll] = springStep(st.roll, st.vRoll, rollT, 9, 50, dt)
-        const armT = Math.max(0, Math.min(1, (vy - 250) / 900)) * 2.3
+        armT = Math.max(0, Math.min(1, (vy - 250) / 900)) * 2.3
         ;[st.arm, st.vArm] = springStep(st.arm, st.vArm, armT, 10, 60, dt)
         st.yawM += (Math.max(-1, Math.min(1, vx / 1400)) * 0.35 - st.yawM) * Math.min(1, dt * 8)
 
@@ -678,10 +628,9 @@ export default function PipeWorld({ onFail }) {
         let tp = 0
         if (cursor && !reduce) {
           const nx = (cursor.x - st.x) / 720
-          const ny = (cursor.y - (st.y - Hs * st.scale * 0.4)) / (view.Hu * 0.6)
-          const hz = st.mode === 'hero' ? st.heroE : 1
-          ty = Math.max(-1, Math.min(1, nx)) * THREE.MathUtils.degToRad(st.mode === 'hero' ? 5 + 17 * hz : 28)
-          tp = Math.max(-1, Math.min(1, ny)) * THREE.MathUtils.degToRad(st.mode === 'hero' ? 2.5 + 6.5 * hz : 14)
+          const ny = (cursor.y - (st.y - Hs * PIPE_SCALE * 0.4)) / (view.Hu * 0.6)
+          ty = Math.max(-1, Math.min(1, nx)) * THREE.MathUtils.degToRad(28)
+          tp = Math.max(-1, Math.min(1, ny)) * THREE.MathUtils.degToRad(14)
         } else if (!reduce) {
           ty = Math.sin(t * 0.4) * 0.19
           tp = Math.sin(t * 0.27 + 1.1) * 0.06
@@ -690,12 +639,10 @@ export default function PipeWorld({ onFail }) {
         ;[st.lookP, st.vLP] = springStep(st.lookP, st.vLP, tp, 11, 20, dt)
 
         // ---- apply pose
-        const heroBlend = st.mode === 'hero' ? st.heroE : piping ? 0
-          : Math.max(0, Math.min(1, (st.scale - PIPE_SCALE) / (HERO_SCALE - PIPE_SCALE)))
-        const s = st.scale
+        const s = PIPE_SCALE
         robot.rig.position.set(st.x + o.jx * s, -(st.y + o.dy * Hs * 2 * s), 0)
         robot.rig.scale.set(s, s * o.sq, s)
-        robot.rig.rotation.set(HERO_PITCH * heroBlend + o.pitch, HERO_YAW * heroBlend + st.yawM + o.yaw, st.roll + o.roll, 'YXZ')
+        robot.rig.rotation.set(o.pitch, st.yawM + o.yaw, st.roll + o.roll, 'YXZ')
         robot.head.rotation.y = st.lookY
         robot.head.rotation.x = st.lookP
         if (robot.arms.R) robot.arms.R.rotation.z = -(st.arm + o.armR)
@@ -714,13 +661,21 @@ export default function PipeWorld({ onFail }) {
 
         // ---- ports: highlight the element under the robot while it runs along a lane
         let portEl = null
-        if (piping && st.seg?.kind === 'lane' && L.ports.length) {
+        if (st.seg?.kind === 'lane' && L.ports.length) {
           portEl = L.ports.find((pp) => pp.key === st.seg.key && st.x >= pp.x0 && st.x < pp.x1)?.el ?? null
         }
         if (portEl !== st.portEl) {
           st.portEl?.classList.remove('is-robot')
           portEl?.classList.add('is-robot')
           st.portEl = portEl
+        }
+        // ---- station sign: the lane the robot is in lights up ("you are here")
+        const laneKey = st.seg?.key ?? null
+        if (laneKey !== st.laneKey) {
+          st.laneEl?.classList.remove('is-robot')
+          st.laneEl = laneKey ? page.querySelector(`[data-lane="${laneKey}"]`) : null
+          st.laneEl?.classList.add('is-robot')
+          st.laneKey = laneKey
         }
       }
 
@@ -731,7 +686,9 @@ export default function PipeWorld({ onFail }) {
     return () => {
       alive = false
       off()
+      themeObs.disconnect()
       st.portEl?.classList.remove('is-robot')
+      st.laneEl?.classList.remove('is-robot')
       ro.disconnect()
       window.removeEventListener('resize', resize)
       window.removeEventListener('pointermove', onMove)

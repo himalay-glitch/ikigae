@@ -1,13 +1,14 @@
 import { useState } from 'react'
 import { SectionGrid, SectionTitle, Lane, HeadingPanel } from './ui.jsx'
 
+/* content: ikai.digital */
 const QA = [
-  { q: 'Who can apply?', a: 'Teams building in AI, DeFi, DePIN or L1/L2 infrastructure, from pre-seed to Series A. A working prototype helps; a finished product isn’t required.' },
-  { q: 'Do you take tokens or equity?', a: 'Either, or both. We structure each deal around what keeps the project healthy over the long run.' },
-  { q: 'How long is the program?', a: 'Twelve weeks from kickoff to demo day, and our support carries on well after launch.' },
-  { q: 'Do we need to relocate?', a: 'No. The program is remote-first, with optional in-person weeks for workshops and demo day.' },
-  { q: 'What does it cost?', a: 'Nothing. There are no program fees; we’re aligned through our investment.' },
-  { q: 'What happens after demo day?', a: 'You keep a partner on call, access to the network and help with your next raise.' },
+  { q: 'What stage should my startup be at?', a: 'We work with pre-seed, seed and Series A founders. Whether you have a rough concept or a working prototype, we can help. The earlier you engage, the more impact we can have on your product direction.' },
+  { q: 'How long does the engagement typically take?', a: 'Most engagements run 6 to 12 weeks depending on scope. We scope a clear timeline up front and work in focused sprints, so you always know what is shipping and when.' },
+  { q: 'What if I’m not ready to fully commit to everything?', a: 'That is fine. You can start with a single phase — validation, branding or design — and expand as you see results. Each phase is designed to stand on its own.' },
+  { q: 'Do you help with fundraising?', a: 'Yes. We prepare investor-ready deliverables — pitch decks, product roadmaps and positioning — and many of our founders use them to raise their next round.' },
+  { q: 'What’s your typical project cost?', a: 'Cost depends on scope and stage. We put together a transparent, fixed proposal after a short discovery call, with no surprises along the way.' },
+  { q: 'Can you build the actual product?', a: 'We design, prototype and hand off production-ready specs and design systems, and we partner with trusted engineering teams to take it all the way to launch.' },
 ]
 
 function Item({ item, id, open, onToggle }) {
@@ -32,9 +33,9 @@ export default function Faq() {
   return (
     <section id="faq" className="sec sec-faq" data-section="faq" aria-labelledby="faq-title">
       <SectionGrid rows={[160, 336]} lines={[640, 1223]} />
-      <Lane id="faq" drop="r" />
+      <Lane id="faq" drop="r" index="07" label="Questions" />
 
-      <SectionTitle className="fq-t" title="Questions, answered" sub="Still curious? Ask the team" />
+      <SectionTitle className="fq-t" title="Frequently asked questions" sub="Everything you need to know about working with us" />
       <HeadingPanel id="faq-title" text="FAQ" className="fq-panel" />
 
       {cols.map(([side, items]) => (

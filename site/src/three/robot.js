@@ -4,33 +4,34 @@ import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
 import { FONT5 } from '../lib/font5.js'
 
 /*
-  Shared robot rig: loads the Blender GLB, swaps in tuned materials, adds the visor screen,
-  LED eyes (stepped robotic blink) and an expression display, and builds shoulder pivots so
-  the arms can gesture. Used by the page-wide PipeWorld scene and the mobile RobotStage.
+  Shared robot rig (v013, blender/robot_v013 — traced from the reference render): loads the GLB, swaps in tuned materials, adds the
+  visor screen, cyan LED eyes (stepped robotic blink) and an expression display. The model
+  carries its own pivots: Head (neck), Arm_L/R (shoulders), Leg_L/R (hips). Used by the page-wide PipeWorld scene and the HeroRobot product shot.
 
   The returned `rig` is a Group whose origin sits at the robot's bounding-box centre and whose
   size is normalised to metres; callers scale it.
 */
 
-export const VISOR = { x: 0.00005, y: 0.1, z: 0.1034, w: 0.176, h: 0.142, r: 0.022 }
-const EYE = { dx: 0.032, y: 0.096, r: 0.0132 }
+// screen (flat black glass inside the charcoal bezel) and eye positions, in Head space (metres)
+export const VISOR = { x: 0, y: 0.0463, z: 0.0462, w: 0.094, h: 0.065, r: 0.015 }
+const EYE = { dx: 0.0205, y: 0.0412, r: 0.0098 }
 
+// v013 — traced from the user's reference render: glossy white shell, near-black screen in a
+// charcoal bezel, near-black chrome joints, dark grey vent ears, orange light trim, chrome feet
 const MATS = {
-  M_Shell_Main: { color: '#ECEBEF', roughness: 0.34, clearcoat: 0.35, clearcoatRoughness: 0.2 },
-  M_Accent: { color: '#D6D4DA', roughness: 0.42 },
-  M_Joint_Metal: { color: '#A9A8AE', roughness: 0.3, metalness: 1 },
-  M_Rubber: { color: '#2F2E33', roughness: 0.72 },
-  M_Details: { color: '#BEBCC2', roughness: 0.38 },
-  M_Backpack: { color: '#DCDADF', roughness: 0.45 },
-  M_LED_Red: { color: '#FF5A12', emissive: '#FF4A00', emissiveIntensity: 0.6 },
-  M_FX_Glow: { color: '#FF6A1A', emissive: '#FF4A00', emissiveIntensity: 0.4 },
-  M_FX_Seam: { color: '#CFCDD2', roughness: 0.4 },
-  M_Chrome: { color: '#DDE0E4', roughness: 0.12, metalness: 1 },
-  M_Deck_Dark: { color: '#2F2E33', roughness: 0.6 },
-  M_Visor_Glass: { color: '#100D0E', roughness: 0.14, clearcoat: 1, clearcoatRoughness: 0.03 },
-  M_Visor_Bezel: { color: '#9A999F', roughness: 0.28, metalness: 1 },
-  M_Status_Orange: { color: '#FE5A10', emissive: '#FF4200', emissiveIntensity: 0.38, roughness: 0.35 },
+  M_Shell_Main: { color: '#F6F7F9', roughness: 0.2, clearcoat: 0.8, clearcoatRoughness: 0.08 },
+  M_Visor_Glass: { color: '#05070A', roughness: 0.06, clearcoat: 1, clearcoatRoughness: 0.02 },
+  M_Visor_Bezel: { color: '#2E3238', roughness: 0.18, metalness: 0.4 },
+  M_Joint_Metal: { color: '#25282E', roughness: 0.3, metalness: 0.75 },
+  M_Ear: { color: '#4A5058', roughness: 0.36, metalness: 0.3 },
+  M_Feet: { color: '#B3B9C2', roughness: 0.16, metalness: 0.95 },
+  M_Status_Orange: { color: '#FF7A1A', unlit: true },
+  M_Rubber: { color: '#1C1F24', roughness: 0.8 },
+  M_Accent: { color: '#E6E8EC', roughness: 0.4 },
+  M_Pelvis: { color: '#8C929B', roughness: 0.25, metalness: 0.85 },
 }
+const CYAN = '#C9F8FF'
+const CYAN_GLOW = 'rgba(40,214,255,0.95)'
 
 // stepped, display-like blink: discrete heights, no easing
 export const BLINK = [1, 0.64, 0.3, 0.12, 0.12, 0.12, 0.3, 0.64, 1]
@@ -56,12 +57,12 @@ function gridTexture() {
   roundedRect(ctx, 0, 0, W, H, (VISOR.r / VISOR.w) * W)
   ctx.clip()
   const g = ctx.createLinearGradient(0, 0, 0, H)
-  g.addColorStop(0, 'rgba(66,24,30,0.34)')
-  g.addColorStop(1, 'rgba(40,14,18,0.22)')
+  g.addColorStop(0, 'rgba(14,40,56,0.30)')
+  g.addColorStop(1, 'rgba(6,18,28,0.16)')
   ctx.fillStyle = g
   ctx.fillRect(0, 0, W, H)
   const cell = W / 9
-  ctx.strokeStyle = 'rgba(255,214,220,0.11)'
+  ctx.strokeStyle = 'rgba(120,230,255,0.06)'
   ctx.lineWidth = 2
   for (let x = (W % cell) / 2; x <= W; x += cell) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke() }
   for (let y = (H % cell) / 2; y <= H; y += cell) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke() }
@@ -72,16 +73,19 @@ function gridTexture() {
 }
 
 function eyeTexture() {
+  // round, glowing cyan LED eyes
   const S = 256
   const c = document.createElement('canvas')
   c.width = c.height = S
   const ctx = c.getContext('2d')
-  ctx.beginPath(); ctx.arc(S / 2, S / 2, S / 2 - 2, 0, Math.PI * 2); ctx.closePath()
-  ctx.fillStyle = '#fff'; ctx.fill()
-  ctx.save(); ctx.clip()
-  ctx.fillStyle = 'rgba(60,24,30,0.12)'
-  for (let y = 0; y < S; y += 14) ctx.fillRect(0, y + 10, S, 4)
-  ctx.restore()
+  const g = ctx.createRadialGradient(S * 0.46, S * 0.42, S * 0.04, S / 2, S / 2, S * 0.4)
+  g.addColorStop(0, '#F2FEFF')
+  g.addColorStop(0.55, '#9BEFFF')
+  g.addColorStop(1, '#3FD8FF')
+  ctx.shadowColor = CYAN_GLOW
+  ctx.shadowBlur = 22
+  ctx.fillStyle = g
+  ctx.beginPath(); ctx.arc(S / 2, S / 2, S * 0.4, 0, Math.PI * 2); ctx.fill()
   const t = new THREE.CanvasTexture(c)
   t.colorSpace = THREE.SRGBColorSpace
   return t
@@ -93,9 +97,9 @@ function glowTexture() {
   c.width = c.height = S
   const ctx = c.getContext('2d')
   const g = ctx.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2)
-  g.addColorStop(0, 'rgba(255,240,236,0.9)')
-  g.addColorStop(0.35, 'rgba(255,214,205,0.35)')
-  g.addColorStop(1, 'rgba(255,200,190,0)')
+  g.addColorStop(0, 'rgba(170,240,255,0.75)')
+  g.addColorStop(0.35, 'rgba(60,210,255,0.3)')
+  g.addColorStop(1, 'rgba(40,200,255,0)')
   ctx.fillStyle = g; ctx.fillRect(0, 0, S, S)
   const t = new THREE.CanvasTexture(c)
   t.colorSpace = THREE.SRGBColorSpace
@@ -145,6 +149,15 @@ const FACES = {
   },
   right(ctx) { FACES._chev(ctx, 1) },
   left(ctx) { FACES._chev(ctx, -1) },
+  // "this way, down": chevrons pointing down that tick down a notch and back (two stepped frames)
+  down(ctx, t) {
+    const dy = Math.floor((t * 2.6) % 2) * ER * 0.32
+    ctx.lineWidth = ER * 0.6; ctx.lineCap = 'round'; ctx.lineJoin = 'round'
+    for (const s of [-1, 1]) {
+      const x = FW / 2 + s * EX
+      ctx.beginPath(); ctx.moveTo(x - ER, EY - ER * 0.5 + dy); ctx.lineTo(x, EY + ER * 0.5 + dy); ctx.lineTo(x + ER, EY - ER * 0.5 + dy); ctx.stroke()
+    }
+  },
   _chev(ctx, d) {
     ctx.lineWidth = ER * 0.6; ctx.lineCap = 'round'; ctx.lineJoin = 'round'
     for (const s of [-1, 1]) {
@@ -173,7 +186,7 @@ const FACES = {
     ctx.globalAlpha = 1
   },
 }
-const ANIMATED = new Set(['load', 'scan'])
+const ANIMATED = new Set(['load', 'scan', 'down'])
 
 
 /* ------------------------------------------------------------------ LED banner
@@ -214,7 +227,7 @@ function ledBaseCanvas() {
   const ctx = ledBase.getContext('2d')
   roundedRect(ctx, 0, 0, FW, FH, (VISOR.r / VISOR.w) * FW)
   ctx.clip()
-  ctx.fillStyle = 'rgba(255,214,220,0.07)'
+  ctx.fillStyle = 'rgba(120,230,255,0.07)'
   for (let r = 0; r < LED_ROWS; r++) for (let c = 0; c < LED_COLS; c++) {
     ctx.beginPath(); ctx.arc((c + 0.5) * LED_PITCH, (r + 0.5) * LED_PITCH + (FH - LED_ROWS * LED_PITCH) / 2, LED_PITCH * 0.3, 0, Math.PI * 2); ctx.fill()
   }
@@ -254,7 +267,13 @@ function buildRig(root) {
     o.castShadow = true
     o.receiveShadow = true
     const spec = MATS[o.material?.name]
-    if (spec) {
+    if (spec && spec.unlit) {
+      // light trim reads as a glowing LED: flat colour, untouched by tone mapping
+      const m = new THREE.MeshBasicMaterial({ color: spec.color, toneMapped: false })
+      m.name = o.material.name
+      o.material.dispose()
+      o.material = m
+    } else if (spec) {
       const m = new THREE.MeshPhysicalMaterial({
         color: spec.color,
         roughness: spec.roughness ?? 0.4,
@@ -284,23 +303,9 @@ function buildRig(root) {
   })
   glowMats.forEach((m) => { m.userData.base = m.emissiveIntensity })
 
-  // shoulder pivots: re-parent each arm chain under a group at the shoulder ball
-  root.updateMatrixWorld(true)
-  const arms = {}
-  for (const side of ['L', 'R']) {
-    const ball = root.getObjectByName(`GLB_RB_Shoulder_Ball_${side}`)
-    if (!ball) continue
-    const c = new THREE.Box3().setFromObject(ball).getCenter(new THREE.Vector3())
-    const pivot = new THREE.Group()
-    pivot.name = `ArmPivot_${side}`
-    pivot.position.copy(head.worldToLocal(c.clone()))
-    head.add(pivot)
-    pivot.updateMatrixWorld(true)
-    const re = new RegExp(`^GLB_(RB_(Shoulder_Ball|Arm_Upper|Arm_Fore|Arm_Collar|Finger\\d_[AB]|Thumb_[AB])|FX_(Band_Elbow|Ring_Palm|Ring_Collar))_${side}$`)
-    const parts = head.children.filter((o) => re.test(o.name))
-    parts.forEach((p) => pivot.attach(p))
-    arms[side] = pivot
-  }
+  // pivots: the model carries its own Arm_L/R and Leg_L/R groups, origins at shoulder / hip
+  const arms = { L: root.getObjectByName('Arm_L'), R: root.getObjectByName('Arm_R') }
+  const legs = { L: root.getObjectByName('Leg_L'), R: root.getObjectByName('Leg_R') }
 
   // normalise: centre the robot on its bounding box (metres)
   const box = new THREE.Box3().setFromObject(root)
@@ -355,8 +360,16 @@ function buildRig(root) {
   head.add(face)
 
   let expr = null
-  let eyeOpen = 0
+  let eyeOpen = 0 // blink (blinker), both eyes
+  let lid = 1 // both eyes share one lid (gestures: squint, sleepy)
+  let eyeSize = 1 // both eyes (gestures: surprise)
+  let faceOpen = 1 // drawn faces open/close in steps around the eye line
+  let blinkFaces = false // opt-in: drawn faces blink with the eyes (except happy, already closed)
   let banner = null // { dots, t0 }
+  const applyEyes = () => {
+    const sy = Math.max(0.0001, eyeSize * eyeOpen * lid)
+    for (const e of eyes) e.scale.set(eyeSize, sy, 1)
+  }
   const drawFace = (t) => {
     fctx.clearRect(0, 0, FW, FH)
     if (!expr) return
@@ -367,10 +380,12 @@ function buildRig(root) {
       faceTex.needsUpdate = true
       return
     }
+    const fo = Math.max(0.02, faceOpen * (blinkFaces && expr !== 'happy' ? eyeOpen : 1))
     fctx.save()
-    fctx.fillStyle = '#fff'
-    fctx.strokeStyle = '#fff'
-    fctx.shadowColor = 'rgba(255,214,205,0.9)'
+    fctx.translate(0, EY); fctx.scale(1, fo); fctx.translate(0, -EY)
+    fctx.fillStyle = CYAN
+    fctx.strokeStyle = CYAN
+    fctx.shadowColor = CYAN_GLOW
     fctx.shadowBlur = ER * 0.9
     FACES[expr](fctx, t)
     fctx.restore()
@@ -378,7 +393,7 @@ function buildRig(root) {
   }
 
   const api = {
-    rig, root, head, arms, eyes, size, center, glowMats,
+    rig, root, head, arms, legs, eyes, size, center, glowMats,
     get expression() { return expr },
     /* LED text on the visor (null clears it); lines = [{ text, color }] */
     setBanner(lines) {
@@ -397,8 +412,20 @@ function buildRig(root) {
       eyes.forEach((e) => { e.visible = !n })
       drawFace(performance.now() / 1000)
     },
-    setEyeOpen(v) { eyeOpen = v; for (const e of eyes) e.scale.y = Math.max(0.0001, v) },
+    setEyeOpen(v) {
+      eyeOpen = v
+      applyEyes()
+      if (blinkFaces && expr && expr !== 'banner' && !ANIMATED.has(expr)) drawFace(performance.now() / 1000)
+    },
     get eyeOpen() { return eyeOpen },
+    setLid(v) { lid = v; applyEyes() },
+    setEyeSize(s) { eyeSize = s; applyEyes() },
+    setFaceOpen(v) {
+      if (v === faceOpen) return
+      faceOpen = v
+      if (expr && expr !== 'banner') drawFace(performance.now() / 1000)
+    },
+    set blinkFaces(v) { blinkFaces = !!v },
     /* per-frame: animated faces; returns true when something changed */
     update(t) {
       if (expr === 'banner') { if (t - banner.t0 < 1.3) { drawFace(t); return true } return false }
@@ -439,5 +466,97 @@ export function createBlinker(robot, { reduce = false } = {}) {
       return true
     },
     dispose() { alive = false; clearTimeout(timer) },
+  }
+}
+
+/* ------------------------------------------------------------------ eye director
+   Gestures and moods on the LED eyes. Everything moves in display-like steps (STEP_MS, no
+   easing) and nothing is aimed at the cursor — the head does the looking, the eyes emote.
+   - moods swap the round eyes for a drawn face (happy ^ ^, star, down chevrons) through a stepped
+     close → swap → open, and hold while requested
+   - gestures play once on the round eyes, always both together: surprise, squint (no winks)
+   - sleepy droops both lids until woken (wake = lids snap open + surprise)
+   Runs alongside the blinker: blinks multiply the lids, and drawn faces blink too. */
+const CLOSE = [0.64, 0.3, 0.12]
+const OPEN = [0.3, 0.64, 1]
+const SLEEPY_LID = 0.4
+const hold = (f, n) => Array.from({ length: n }, () => ({ ...f }))
+
+export function createEyeDirector(robot) {
+  robot.blinkFaces = true
+  const st = { lid: 1, size: 1, face: null, fo: 1 }
+  let q = []
+  let last = 0
+  let mood = null
+  let sleepy = false
+  const base = () => (sleepy ? SLEEPY_LID : 1)
+
+  const apply = (f) => {
+    Object.assign(st, f)
+    if (robot.expression !== 'banner' && robot.expression !== st.face) robot.setExpression(st.face)
+    robot.setLid(st.lid)
+    robot.setEyeSize(st.size)
+    robot.setFaceOpen(st.fo)
+  }
+
+  // frames from what is on the visor now to the requested mood
+  const toMood = (m) => {
+    const b = base()
+    const out = []
+    if (st.face) CLOSE.forEach((v) => out.push({ fo: v }))
+    else CLOSE.forEach((v) => out.push({ lid: v * b, size: 1 }))
+    if (m) {
+      out.push({ face: m, fo: 0.12, lid: b })
+      OPEN.forEach((v) => out.push({ fo: v }))
+    } else {
+      out.push({ face: null, fo: 1, lid: 0.12 * b })
+      OPEN.forEach((v) => out.push({ lid: v * b }))
+    }
+    return out
+  }
+  const lids = (ks) => ks.map((k) => ({ lid: k * base() }))
+
+  // one lid for both eyes, by construction — a one-eyed wink read as a broken LED, not a gesture
+  const GESTURES = {
+    // eyes pop wide, hold, settle
+    surprise: () => [
+      { size: 1.1, lid: 1 }, { size: 1.2 }, { size: 1.26 },
+      ...hold({ size: 1.26 }, 10),
+      { size: 1.16 }, { size: 1.08 }, { size: 1 },
+    ],
+    // content squint: lids lower halfway, hold, lift
+    squint: () => lids([0.78, 0.58, 0.46, ...Array(18).fill(0.46), 0.58, 0.78, 1]),
+  }
+
+  return {
+    get mood() { return mood },
+    get sleepy() { return sleepy },
+    get busy() { return q.length > 0 },
+    /* hold a drawn face (null = round eyes); a change interrupts whatever is playing */
+    setMood(m) {
+      if (m === mood) return
+      mood = m
+      q = toMood(m)
+    },
+    setSleepy(v) {
+      if (v === sleepy) return
+      sleepy = v
+      if (st.face || mood) return // applied when the eyes come back
+      if (v) q = [0.82, 0.66, 0.52, SLEEPY_LID].map((k) => ({ lid: k }))
+      else q = [{ lid: 1 }, ...GESTURES.surprise()]
+    },
+    /* one-shot gesture on the round eyes; ignored while a face is up or something is playing */
+    play(name) {
+      if (mood || st.face || q.length || !GESTURES[name]) return false
+      q = GESTURES[name]()
+      return true
+    },
+    /* call every frame; returns true when the visor changed */
+    tick(now) {
+      if (!q.length || now - last < STEP_MS) return false
+      last = now
+      apply(q.shift())
+      return true
+    },
   }
 }

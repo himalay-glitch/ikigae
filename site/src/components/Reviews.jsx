@@ -3,12 +3,12 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { SectionGrid, SectionTitle, Lane, HeadingPanel, ease } from './ui.jsx'
 import { Chevron } from './icons.jsx'
 
-/* Placeholder testimonials from the fictional portfolio teams; replace with real quotes. */
+/* PLACEHOLDER testimonials (dummy founders) — ikai.digital has none yet; replace with real quotes. */
 const QUOTES = [
-  { q: 'They read our token model line by line and found two problems we’d missed. That alone was worth the program.', name: 'Maya Okafor', role: 'Co-founder', team: 'Sentra' },
-  { q: 'Most funds send a term sheet and disappear. This team sat in our stand-ups for eight weeks.', name: 'Daniel Reyes', role: 'CEO', team: 'Fluxbridge' },
-  { q: 'The go-to-market playbook turned a quiet waitlist into a real community before mainnet.', name: 'Priya Nair', role: 'Founder', team: 'Gridmesh' },
-  { q: 'Honest feedback, fast decisions and introductions that actually turned into partnerships.', name: 'Tomás Lindqvist', role: 'CTO', team: 'Orbitra' },
+  { q: 'The research report killed our first idea in week two — and pointed us at the one we raised on.', name: 'Ananya Rao', role: 'Founder', team: 'Fintech, pre-seed' },
+  { q: 'We walked in with a Notion doc and walked out with a clickable prototype investors could actually tap through.', name: 'Kabir Shah', role: 'CEO', team: 'Health tech, seed' },
+  { q: 'Positioning finally made sense of our product. Our landing page conversion doubled after the rebrand.', name: 'Meera Iyer', role: 'Co-founder', team: 'B2B SaaS, seed' },
+  { q: 'Fixed scope, focused sprints, no surprises. The design system alone saved our engineers months.', name: 'Rohan Verma', role: 'CTO', team: 'Climate, Series A' },
 ]
 
 function Quote({ item }) {
@@ -36,9 +36,9 @@ export default function Reviews() {
   return (
     <section id="reviews" className="sec sec-reviews" data-section="reviews" aria-labelledby="reviews-title">
       <SectionGrid rows={[160, 336, 716]} lines={[640, 1223]} />
-      <Lane id="reviews" drop="r" />
+      <Lane id="reviews" drop="r" index="05" label="Reviews" />
 
-      <SectionTitle className="rv-t" title="Founders on the pipeline" sub="In their words" />
+      <SectionTitle className="rv-t" title="Founders who shipped" sub="In their words" />
       <HeadingPanel id="reviews-title" text="REVIEWS" className="rv-panel" />
 
       <div className="rv-slots" aria-live="polite">

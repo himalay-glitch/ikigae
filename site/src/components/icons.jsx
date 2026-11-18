@@ -1,16 +1,16 @@
 export const LogoMark = (p) => (
   <svg viewBox="0 0 48 48" {...p} aria-hidden="true">
-    <rect x="3" y="3" width="42" height="42" rx="11" fill="#FE6F22" />
-    <rect x="10.5" y="10.5" width="27" height="27" rx="5.5" fill="#E4E4E4" />
-    <circle cx="19" cy="25" r="3.1" fill="#1B1B1B" />
-    <circle cx="29" cy="25" r="3.1" fill="#1B1B1B" />
+    <rect x="3" y="3" width="42" height="42" rx="11" style={{ fill: 'var(--accent)' }} />
+    <rect x="10.5" y="10.5" width="27" height="27" rx="5.5" style={{ fill: 'var(--bg)' }} />
+    <circle cx="19" cy="25" r="3.1" style={{ fill: 'var(--ink)' }} />
+    <circle cx="29" cy="25" r="3.1" style={{ fill: 'var(--ink)' }} />
   </svg>
 )
 
 export const EcosystemDots = (p) => (
   <svg viewBox="0 0 12 12" {...p} aria-hidden="true">
     {[[1, 1], [8, 1], [1, 8], [8, 8]].map(([x, y]) => (
-      <rect key={`${x}${y}`} x={x} y={y} width="3" height="3" fill="#FE6F22" />
+      <rect key={`${x}${y}`} x={x} y={y} width="3" height="3" style={{ fill: 'var(--accent)' }} />
     ))}
   </svg>
 )
@@ -30,7 +30,8 @@ export const Target = (p) => (
 
 export const XLogo = (p) => (
   <svg viewBox="0 0 24 24" {...p} aria-hidden="true">
-    <path fill="currentColor" d="M17.75 3h3.07l-6.7 7.66L22 21h-6.17l-4.83-6.32L5.47 21H2.4l7.17-8.2L2 3h6.33l4.37 5.77L17.75 3Zm-1.08 16.2h1.7L7.4 4.73H5.58L16.67 19.2Z" />
+    <rect x="2.75" y="2.75" width="18.5" height="18.5" rx="5.5" fill="none" stroke="currentColor" strokeWidth="1.8" />
+    <path fill="currentColor" d="M15.1 7h1.75l-3.82 4.37L17.5 17h-3.52l-2.75-3.6L8.08 17H6.33l4.08-4.67L6.1 7h3.6l2.5 3.29L15.1 7Zm-.61 9.02h.97L9.13 7.93H8.09l6.4 8.09Z" />
   </svg>
 )
 
@@ -48,8 +49,16 @@ export const Medium = (p) => (
 
 export const LinkedIn = (p) => (
   <svg viewBox="0 0 24 24" {...p} aria-hidden="true">
-    <rect x="2" y="2" width="20" height="20" rx="3" fill="currentColor" />
-    <path fill="#F6F6F6" d="M6.3 9.6h2.5V18H6.3V9.6Zm1.3-4a1.4 1.4 0 1 1 0 2.9 1.4 1.4 0 0 1 0-2.9ZM10.4 9.6h2.4v1.2c.4-.7 1.2-1.4 2.6-1.4 2.6 0 3.1 1.7 3.1 4V18H16v-4c0-1 0-2.2-1.3-2.2-1.4 0-1.6 1-1.6 2.1V18h-2.6V9.6Z" />
+    <rect x="2.75" y="2.75" width="18.5" height="18.5" rx="5.5" fill="none" stroke="currentColor" strokeWidth="1.8" />
+    <path fill="currentColor" d="M7.4 10.2h2v6.6h-2v-6.6Zm1-3.1a1.15 1.15 0 1 1 0 2.3 1.15 1.15 0 0 1 0-2.3ZM10.75 10.2h1.9v.9c.3-.55 1-1.08 2.05-1.08 2.08 0 2.45 1.36 2.45 3.13v3.65h-1.98v-3.2c0-.78-.02-1.76-1.07-1.76-1.08 0-1.25.84-1.25 1.7v3.26h-2.1v-6.6Z" />
+  </svg>
+)
+
+export const Instagram = (p) => (
+  <svg viewBox="0 0 24 24" {...p} aria-hidden="true">
+    <rect x="2.75" y="2.75" width="18.5" height="18.5" rx="5.5" fill="none" stroke="currentColor" strokeWidth="1.8" />
+    <circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" strokeWidth="1.8" />
+    <circle cx="17.4" cy="6.6" r="1.25" fill="currentColor" />
   </svg>
 )
 
@@ -72,7 +81,7 @@ export const PARTNERS = [
     icon: (
       <svg viewBox="0 0 40 40" aria-hidden="true">
         <circle cx="20" cy="20" r="15" fill="none" stroke="currentColor" strokeWidth="6" />
-        <rect x="17" y="2" width="6" height="12" fill="#F6F6F6" />
+        <rect x="17" y="2" width="6" height="12" style={{ fill: 'var(--panel)' }} />
       </svg>
     ),
   },
@@ -91,7 +100,7 @@ export const PARTNERS = [
     icon: (
       <svg viewBox="0 0 40 40" aria-hidden="true">
         <path d="M20 3 35 11.5v17L20 37 5 28.5v-17Z" fill="currentColor" />
-        <path d="M20 12 27.5 16.3v8.4L20 29l-7.5-4.3v-8.4Z" fill="#F6F6F6" />
+        <path d="M20 12 27.5 16.3v8.4L20 29l-7.5-4.3v-8.4Z" style={{ fill: 'var(--panel)' }} />
         <path d="M20 17.5 23 19.2v3.5L20 24.5 17 22.7v-3.5Z" fill="currentColor" />
       </svg>
     ),

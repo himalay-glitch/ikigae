@@ -1,24 +1,25 @@
 import { motion } from 'framer-motion'
 import { SectionGrid, Reveal, SectionTitle, Lane, HeadingPanel, ease } from './ui.jsx'
-import { IsoIcon, ICONS } from './IsoIcon.jsx'
+import { IsoIcon, PHASES } from './IsoIcon.jsx'
 
+/* four phases, built from IKAI's deliverables (ikai.digital) — each can be booked on its own */
 const STEPS = [
-  { name: 'Apply', when: 'Week 0', icon: ICONS.community, text: 'Send a deck and a demo. A partner reads every application and replies within two weeks.' },
-  { name: 'Diligence', when: 'Weeks 1–2', icon: ICONS.shield, text: 'We pressure-test the tech, token design and market with you — no black-box committee.' },
-  { name: 'Build', when: 'Weeks 3–10', icon: ICONS.pyramid, text: 'Eight weeks of hands-on work with operators on product, tokenomics, legal and hiring.' },
-  { name: 'Launch', when: 'Weeks 11–12', icon: ICONS.launch, text: 'Go-to-market, listings and a demo day in front of our partner network.' },
+  { name: 'Validate', when: 'Research', icon: PHASES.validate, scene: 'validate', text: 'Market and user research that shows whether your idea is what customers actually want.' },
+  { name: 'Position', when: 'Strategy', icon: PHASES.position, scene: 'position', text: 'Identity, positioning and messaging that set you apart in a crowded market.' },
+  { name: 'Design', when: 'UI · Prototype', icon: PHASES.design, scene: 'design', text: 'Beautiful, functional interfaces, a clickable prototype and a reusable design system.' },
+  { name: 'Launch', when: 'Go-to-market', icon: PHASES.launch, scene: 'launch', text: 'A launch plan, an investor‑ready pitch deck and a 12‑month product roadmap.' },
 ]
 
 export default function Process() {
   return (
     <section id="process" className="sec sec-process" data-section="process" aria-labelledby="process-title">
       <SectionGrid rows={[160, 336, 676]} lines={[348.5, 640, 931.5, 1223]} />
-      <Lane id="process" drop="r" />
+      <Lane id="process" drop="r" index="03" label="How it works" />
 
       <HeadingPanel id="process-title" text="HOW IT WORKS" className="pr-panel" />
-      <SectionTitle className="pr-t" title={<>A pipeline,<br />not a pitch deck</>} sub="Four stages · twelve weeks" />
+      <SectionTitle className="pr-t" title={<>A pipeline,<br />not a guess</>} sub="Four phases · 6–12 weeks" />
       <Reveal className="pr-copy" delay={0.1}>
-        <p>Every team moves through the same four stations. Guide the robot along the pipe to light each one up.</p>
+        <p>We scope a clear timeline up front and work in focused sprints, so you always know what is shipping and when. Guide the robot along the pipe to light each phase up.</p>
       </Reveal>
 
       <ol className="pr-steps">
@@ -34,7 +35,7 @@ export default function Process() {
           >
             <span className="pr-num">{String(i + 1).padStart(2, '0')}</span>
             <span className="pr-when">{s.when}</span>
-            <span className="pr-icon"><IsoIcon boxes={s.icon} label="" /></span>
+            <span className="pr-icon"><IsoIcon boxes={s.icon} scene={s.scene} label="" /></span>
             <h3 className="pr-name">{s.name}</h3>
             <p className="pr-text">{s.text}</p>
             <span className="pr-bar" aria-hidden="true" />

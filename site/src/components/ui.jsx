@@ -77,11 +77,12 @@ export function FeatureCard({ index, icon, label, className = '' }) {
 }
 
 /* the horizontal pipe band at the top of a section; PipeWorld draws the glass tube here.
+   `label` + `index` print a station sign in the band's top corner, clear of the incoming elbow.
    `drop` = the side where the S-pipe turns down to the next section ('r' | 'l' | 'end') */
-export function Lane({ id, drop, label }) {
+export function Lane({ id, drop, label, index }) {
   return (
     <div className="lane" data-lane={id} data-drop={drop} aria-hidden="true">
-      {label && <span className="lane-label">{label}</span>}
+      {label && <span className="lane-label"><span className="lane-sq" />{index && <b>{index}</b>}{label}</span>}
     </div>
   )
 }
